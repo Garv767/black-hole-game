@@ -84,7 +84,7 @@ export function getNeighbors(index, totalCircles) {
  *   winner: number
  * }}
  */
-export function calculateScores(board, totalCircles) {
+export function calculateScores(board, totalCircles, gameMode) {
   // 1. Find the black hole — the one remaining null
   const blackHoleIndex = board.findIndex((cell) => cell === null);
 
@@ -92,22 +92,37 @@ export function calculateScores(board, totalCircles) {
   const scoringIndices = getNeighbors(blackHoleIndex, totalCircles);
 
   // 3. Sum values per player across those neighbors
-  const scores = {};
+  const scores = { 1: 0, 2: 0 };
+  if (gameMode === "3p") scores[3] = 0;
+
   for (const idx of scoringIndices) {
     const cell = board[idx];
     if (!cell) continue;
-    scores[cell.player] = (scores[cell.player] || 0) + cell.value;
+    scores[cell.player] += cell.value;
   }
 
   // 4. Player with the lowest score wins
-  const winner = Object.entries(scores).reduce(
-    (best, [player, score]) =>
-      score < best.score ? { player: Number(player), score } : best,
-    { player: -1, score: Infinity }
-  ).player;
+  let winner = -1;
+  let minScore = Infinity;
+  let isTie = false;
+  
+  Object.entries(scores).forEach(([player, score]) => {
+    if (score < minScore) {
+      minScore = score;
+      winner = Number(player);
+      isTie = false;
+    } else if (score === minScore) {
+      isTie = true;
+    }
+  });
+
+  // Handle tie breaker if necessary, currently we can just return a tie state or the tied players
+  if (isTie) {
+    winner = null; // Indicates a tie
+  }
 
   // scoringIndices returned so Suvarna can animate the black hole reveal
-  return { blackHoleIndex, scoringIndices, scores, winner };
+  return { blackHoleIndex, scoringIndices, scores, winner, isTie };
 }
 
 // ─── Task 4: AI Opponent ─────────────────────
