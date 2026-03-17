@@ -1,25 +1,210 @@
-.board {
+/* Board specific brutalist styles */
+.board-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 2vh 1rem;
+  padding-bottom: 120px; /* Space for sticky tray */
+  overflow: hidden;
+}
+
+.turn-indicator {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: opacity 0.3s ease;
+}
+
+.turn-indicator span {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  margin-left: 0.5rem;
+  background-color: var(--text-primary);
+  color: var(--bg-color);
+  font-weight: bold;
+}
+
+.board-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 120px;
+  justify-content: center;
+  gap: 8px; /* Strict grid gap */
 }
 
 .board-row {
   display: flex;
   justify-content: center;
+  gap: 8px; /* Strict grid gap */
 }
 
-.circle {
+.board-cell {
   width: 12vmin;
   height: 12vmin;
-  border-radius: 50%;
-  background: #ddd;
-  margin: 6px;
+  max-width: 60px;
+  max-height: 60px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border-color);
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 4vmin;
+  font-size: 1.5rem;
   font-weight: bold;
   cursor: pointer;
+  background-color: transparent;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.board-cell::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 4px; right: 4px; bottom: 4px;
+  border: 1px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.board-cell.empty {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.board-cell.empty:hover {
+  border-style: solid;
+  border-color: var(--text-primary);
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.board-cell.p1 { 
+  border-color: var(--color-p1); 
+  color: var(--color-p1); 
+  animation: popIn 0.3s ease-out forwards;
+  box-shadow: 0 0 10px rgba(255, 42, 42, 0.4), inset 0 0 15px rgba(255, 42, 42, 0.2);
+}
+.board-cell.p1::after { border-color: rgba(255, 42, 42, 0.5); }
+
+.board-cell.p2 { 
+  border-color: var(--color-p2); 
+  color: var(--color-p2); 
+  animation: popIn 0.3s ease-out forwards;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.4), inset 0 0 15px rgba(0, 255, 136, 0.2);
+}
+.board-cell.p2::after { border-color: rgba(0, 255, 136, 0.5); }
+
+.board-cell.p3 { 
+  border-color: var(--color-p3); 
+  color: var(--color-p3); 
+  animation: popIn 0.3s ease-out forwards;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.4), inset 0 0 15px rgba(255, 170, 0, 0.2);
+}
+.board-cell.p3::after { border-color: rgba(255, 170, 0, 0.5); }
+
+/* --- BLACK HOLE REVEAL --- */
+.board-container.gameover .board-cell {
+  opacity: 0.3; /* dim the whole board */
+  border-style: dotted;
+}
+
+.board-container.gameover .board-cell.black-hole {
+  opacity: 1;
+  border-style: solid;
+  border-color: #fff;
+  background-color: #000;
+  box-shadow: inset 0 0 20px #fff, 0 0 30px #fff;
+  animation: pulse-hole 2s infinite alternate;
+}
+
+.board-container.gameover .board-cell.scoring-adjacent {
+  opacity: 1;
+  border-style: solid;
+  border-width: 2px;
+  transform: scale(1.1);
+  z-index: 2;
+}
+/* We don't override the color classes here so the player's color remains */
+
+@keyframes pulse-hole {
+  0% { transform: scale(0.9); box-shadow: inset 0 0 10px #fff, 0 0 20px #fff; }
+  100% { transform: scale(1.1); box-shadow: inset 0 0 30px #fff, 0 0 50px #fff; }
+}
+
+/* Chip Tray at bottom */
+.chip-tray-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(5, 5, 5, 0.95);
+  border-top: 1px solid var(--border-color);
+  padding: 1rem;
+  backdrop-filter: blur(5px);
+  z-index: 10;
+  transition: transform 0.5s ease;
+}
+
+/* Slide out when game over */
+.chip-tray-container.hidden {
+  transform: translateY(100%);
+}
+
+.chip-tray-header {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  /* hide scrollbar */
+  scrollbar-width: none; 
+}
+.chip-list::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  min-width: 48px;
+  height: 48px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.1s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chip.selected {
+  background: var(--text-primary);
+  color: var(--bg-color);
+  border-color: var(--text-primary);
+}
+
+.player-theme-1 .chip.selected { background: var(--color-p1); border-color: var(--color-p1); color: black; }
+.player-theme-2 .chip.selected { background: var(--color-p2); border-color: var(--color-p2); color: black; }
+.player-theme-3 .chip.selected { background: var(--color-p3); border-color: var(--color-p3); color: black; }
