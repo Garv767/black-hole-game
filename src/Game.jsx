@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { calculateScores, getAIMove } from "./utils";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove } from "./utils";
 import Board from "./Board";
 import GameOver from "./GameOver";
 
 export default function Game() {
   const { mode: gameMode } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Validate mode, fallback to pvp if invalid
   const isValidMode = ["pvp", "pve", "3p"].includes(gameMode);
@@ -15,11 +16,18 @@ export default function Game() {
   const totalCircles = activeMode === "3p" ? 28 : 21;
   const maxValue     = activeMode === "3p" ? 9 : 10;
 
+  // Read algo choice passed by Ketki's menu screen (defaults to 'greedy')
+  const { algo: initialAlgo = "greedy" } = location.state ?? {};
+
   const [phase, setPhase]                 = useState("playing");
   const [board, setBoard]                 = useState(Array(totalCircles).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [nextValues, setNextValues]       = useState({ 1: 1, 2: 1, 3: 1 });
   const [gameResult, setGameResult]       = useState(null);
+  // 'greedy' | 'minimax' | 'alphabeta' — exported via prop/context for Ketki's UI & Suvarna's stats
+  const [selectedAlgo, setSelectedAlgo]   = useState(initialAlgo);
+  // Last AI move stats — Suvarna's StatsPanel reads this
+  const [lastAiStats, setLastAiStats]     = useState({ nodesEvaluated: 0, timeTakenMs: 0 });
 
   // Note: we don't need selectedNumber anymore if we enforce sequential play.
   // The player MUST play their nextValues[currentPlayer]. So it's auto-selected.
@@ -102,8 +110,23 @@ export default function Game() {
     const aiValue = values[aiPlayer];
 
     setTimeout(() => {
-      const aiIndex = getAIMove(currentBoard, totalCircles, aiValue);
+      // Dispatch to the correct algorithm; greedy returns a plain index (no stats)
+      let aiIndex;
+      let moveStats = { nodesEvaluated: 0, timeTakenMs: 0 };
 
+      if (selectedAlgo === "minimax") {
+        const result = getMinimaxMove(currentBoard, totalCircles, aiValue);
+        aiIndex = result.index;
+        moveStats = result.stats;
+      } else if (selectedAlgo === "alphabeta") {
+        const result = getAlphaBetaMove(currentBoard, totalCircles, aiValue);
+        aiIndex = result.index;
+        moveStats = result.stats;
+      } else {
+        aiIndex = getAIMove(currentBoard, totalCircles, aiValue);
+      }
+
+      setLastAiStats(moveStats);
       playPlacementSound(aiPlayer);
 
       const newBoard = [...currentBoard];
@@ -150,7 +173,7 @@ export default function Game() {
         zIndex: 5
       }}>
         <div style={{ textTransform: "uppercase", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-          MODE: {activeMode === "pve" ? "1 VS AI" : activeMode === "pvp" ? "1 VS 1" : "3 PLAYERS"}
+          MODE: {activeMode === "pve" ? `1 VS AI (${selectedAlgo.toUpperCase()})` : activeMode === "pvp" ? "1 VS 1" : "3 PLAYERS"}
         </div>
         <button 
           onClick={handleExit}
@@ -173,6 +196,8 @@ export default function Game() {
           gameMode={activeMode}
           phase={phase}
           gameResult={gameResult}
+          selectedAlgo={selectedAlgo}
+          lastAiStats={lastAiStats}
         />
       )}
 
