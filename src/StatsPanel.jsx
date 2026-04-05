@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function StatsPanel({ algo, nodesEvaluated, timeTakenMs, currentScore, movesPlayed }) {
+export default function StatsPanel({ algo, nodesEvaluated, timeTakenMs, p1Score, p2Score }) {
   const accent = algo === 'greedy' ? 'var(--color-p1)' : algo === 'minimax' ? 'var(--color-p2)' : 'var(--color-p3)';
   
   return (
@@ -24,10 +24,10 @@ export default function StatsPanel({ algo, nodesEvaluated, timeTakenMs, currentS
         <span style={{ color: 'var(--text-secondary)' }}>TIME TAKEN:</span>
         <span>{timeTakenMs || 0}ms</span>
       </div>
-      {(currentScore !== undefined || movesPlayed !== undefined) && (
+      {(p1Score !== undefined) && (
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>SCORE: {currentScore !== undefined ? currentScore : 0}</span>
-          <span>MOVES: {movesPlayed || 0}</span>
+          <span>P1 SCORE: {p1Score !== undefined ? p1Score : 0}</span>
+          <span>P2 SCORE: {p2Score !== undefined ? p2Score : 0}</span>
         </div>
       )}
     </div>

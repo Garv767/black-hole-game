@@ -202,6 +202,31 @@ function greedyScoreEstimate(board, totalCircles) {
   return totalAiScore / nullIndices.length;
 }
 
+// ─── Current Score Estimator ──────────────
+export function estimateScores(board, totalCircles) {
+  const nullIndices = board
+    .map((cell, i) => (cell === null ? i : -1))
+    .filter((i) => i !== -1);
+
+  const expectedScores = { 1: 0, 2: 0 };
+  if (nullIndices.length === 0) return expectedScores;
+
+  for (const nullIdx of nullIndices) {
+    const neighbors = getNeighbors(nullIdx, totalCircles);
+    for (const n of neighbors) {
+      const cell = board[n];
+      if (cell && (cell.player === 1 || cell.player === 2)) {
+        expectedScores[cell.player] += cell.value;
+      }
+    }
+  }
+
+  expectedScores[1] = Math.round((expectedScores[1] / nullIndices.length) * 10) / 10;
+  expectedScores[2] = Math.round((expectedScores[2] / nullIndices.length) * 10) / 10;
+  
+  return expectedScores;
+}
+
 // ─── Task 1: Minimax ─────────────────────────
 
 /**
@@ -433,7 +458,7 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
 
     // Sort by estimatedScore ascending (lower = better for AI) and cap at ~20 total visible nodes
     childNodes.sort((a, b) => a.estimatedScore - b.estimatedScore);
-    const keepCount = Math.min(childNodes.length, Math.max(3, Math.floor(20 / Math.max(1, emptyIndices.length))));
+    const keepCount = Math.min(childNodes.length, 3);
     node.children = childNodes.slice(0, keepCount);
 
     return node;

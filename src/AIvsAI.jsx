@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove } from "./utils";
+import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove, estimateScores } from "./utils";
 import Board from "./Board";
 import StatsPanel from "./StatsPanel";
 
@@ -19,9 +19,9 @@ export default function AIvsAI() {
   const [paused, setPaused] = useState(true);
   const [results, setResults] = useState({ greedy: null, minimax: null, alphabeta: null });
   const [stats, setStats] = useState({
-    greedy: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
-    minimax: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
-    alphabeta: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
+    greedy: { nodesEvaluated: 'N/A', timeTakenMs: '<1', p1Score: 0, p2Score: 0 },
+    minimax: { nodesEvaluated: 0, timeTakenMs: 0, p1Score: 0, p2Score: 0 },
+    alphabeta: { nodesEvaluated: 0, timeTakenMs: 0, p1Score: 0, p2Score: 0 },
   });
   const [colPhase, setColPhase] = useState({ greedy: 'playing', minimax: 'playing', alphabeta: 'playing' });
 
@@ -40,7 +40,10 @@ export default function AIvsAI() {
       activeAny = true;
       const index = getAIMove(newBoards.greedy, totalCircles, valueToPlace);
       newBoards.greedy[index] = { player: currentPlayer, value: valueToPlace };
-      newStats.greedy.movesPlayed += 1;
+      
+      const scores = estimateScores(newBoards.greedy, totalCircles);
+      newStats.greedy.p1Score = scores[1];
+      newStats.greedy.p2Score = scores[2];
       
       const nullCount = newBoards.greedy.filter(c => c === null).length;
       if (nullCount === 1) {
@@ -53,10 +56,12 @@ export default function AIvsAI() {
       activeAny = true;
       const move = getMinimaxMove(newBoards.minimax, totalCircles, valueToPlace);
       newBoards.minimax[move.index] = { player: currentPlayer, value: valueToPlace };
-      // stats might be undefined if getMinimaxMove isn't fully returning stats yet, handle gracefully
       newStats.minimax.nodesEvaluated += move.stats?.nodesEvaluated || 0;
       newStats.minimax.timeTakenMs += move.stats?.timeTakenMs || 0;
-      newStats.minimax.movesPlayed += 1;
+      
+      const scores = estimateScores(newBoards.minimax, totalCircles);
+      newStats.minimax.p1Score = scores[1];
+      newStats.minimax.p2Score = scores[2];
       
       const nullCount = newBoards.minimax.filter(c => c === null).length;
       if (nullCount === 1) {
@@ -71,7 +76,10 @@ export default function AIvsAI() {
       newBoards.alphabeta[move.index] = { player: currentPlayer, value: valueToPlace };
       newStats.alphabeta.nodesEvaluated += move.stats?.nodesEvaluated || 0;
       newStats.alphabeta.timeTakenMs += move.stats?.timeTakenMs || 0;
-      newStats.alphabeta.movesPlayed += 1;
+      
+      const scores = estimateScores(newBoards.alphabeta, totalCircles);
+      newStats.alphabeta.p1Score = scores[1];
+      newStats.alphabeta.p2Score = scores[2];
       
       const nullCount = newBoards.alphabeta.filter(c => c === null).length;
       if (nullCount === 1) {
@@ -98,7 +106,7 @@ export default function AIvsAI() {
 
   useEffect(() => {
     if (!paused) {
-      const speed = 700;
+      const speed = 450;
       turnLoopRef.current = setTimeout(step, speed);
     }
     return () => clearTimeout(turnLoopRef.current);
@@ -115,9 +123,9 @@ export default function AIvsAI() {
     setPaused(true);
     setResults({ greedy: null, minimax: null, alphabeta: null });
     setStats({
-      greedy: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
-      minimax: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
-      alphabeta: { nodesEvaluated: 0, timeTakenMs: 0, currentScore: 0, movesPlayed: 0 },
+      greedy: { nodesEvaluated: 'N/A', timeTakenMs: '<1', p1Score: 0, p2Score: 0 },
+      minimax: { nodesEvaluated: 0, timeTakenMs: 0, p1Score: 0, p2Score: 0 },
+      alphabeta: { nodesEvaluated: 0, timeTakenMs: 0, p1Score: 0, p2Score: 0 },
     });
     setColPhase({ greedy: 'playing', minimax: 'playing', alphabeta: 'playing' });
   };
@@ -174,7 +182,8 @@ export default function AIvsAI() {
               algo={algo} 
               nodesEvaluated={stats[algo].nodesEvaluated}
               timeTakenMs={stats[algo].timeTakenMs}
-              movesPlayed={stats[algo].movesPlayed}
+              p1Score={stats[algo].p1Score}
+              p2Score={stats[algo].p2Score}
             />
           </div>
         ))}

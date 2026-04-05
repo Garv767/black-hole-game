@@ -33,7 +33,9 @@ export default function Game() {
 
   useEffect(() => {
     if (phase === "playing") {
-      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, 2));
+      const nullCount = board.filter(c => c === null).length;
+      const dynDepth = nullCount <= 5 ? 4 : nullCount <= 12 ? 3 : 2;
+      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, dynDepth));
     }
   }, [board, currentPlayer, nextValues, phase, totalCircles]);
 
