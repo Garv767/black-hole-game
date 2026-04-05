@@ -175,12 +175,20 @@ export default function Game() {
         <div style={{ textTransform: "uppercase", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
           MODE: {activeMode === "pve" ? `1 VS AI (${selectedAlgo.toUpperCase()})` : activeMode === "pvp" ? "1 VS 1" : "3 PLAYERS"}
         </div>
-        <button 
-          onClick={handleExit}
-          style={{ padding: "0.5rem 1rem", fontSize: "0.8rem", border: "1px solid var(--border-color)" }}
-        >
-          EXIT
-        </button>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <button 
+            onClick={handlePlayAgain}
+            style={{ padding: "0.5rem 1rem", fontSize: "0.8rem", border: "1px solid var(--border-color)" }}
+          >
+            RESET
+          </button>
+          <button 
+            onClick={handleExit}
+            style={{ padding: "0.5rem 1rem", fontSize: "0.8rem", border: "1px solid var(--border-color)" }}
+          >
+            EXIT
+          </button>
+        </div>
       </div>
 
       {(phase === "playing" || phase === "gameover") && (
