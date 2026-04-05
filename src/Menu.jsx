@@ -12,6 +12,18 @@ export default function Menu({ onStart }) {
       alignItems: 'center',
       padding: '2rem'
     }}>
+      <img 
+        src="/black-hole-game/image.png" 
+        alt="Logo" 
+        style={{ 
+          width: '120px', 
+          height: '120px', 
+          borderRadius: '50%', 
+          marginBottom: '2rem',
+          border: '2px solid var(--text-primary)',
+          boxShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
+        }} 
+      />
       <h1 className="heading-oswald" style={{ marginBottom: '0.5rem', textAlign: 'center' }}>BLACK HOLE</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '3rem', textAlign: 'center', maxWidth: '400px' }}>
         A strategic number placement game. The circle with the lowest sum of neighbors around the black hole wins. 

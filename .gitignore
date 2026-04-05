@@ -11,6 +11,10 @@ node_modules
 dist-ssr
 *.local
 
+# Build artifacts
+dist
+.vite/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -21,15 +25,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.vite/deps/_metadata.json
-.vite/deps/chunk-G4V7ITBN.js
-.vite/deps/chunk-G4V7ITBN.js.map
-.vite/deps/chunk-NOSD3EBE.js
-.vite/deps/chunk-NOSD3EBE.js.map
-.vite/deps/react-dom_client.js
-.vite/deps/react-dom_client.js.map
-.vite/deps/react-router-dom.js
-.vite/deps/react-router-dom.js.map
-.vite/deps/react.js
-.vite/deps/react.js.map
-.vite/deps/_metadata.json
