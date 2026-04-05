@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove } from "./utils";
+import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove, buildStateTree } from "./utils";
 import Board from "./Board";
 import GameOver from "./GameOver";
 
@@ -28,6 +28,14 @@ export default function Game() {
   const [selectedAlgo, setSelectedAlgo]   = useState(initialAlgo);
   // Last AI move stats — Suvarna's StatsPanel reads this
   const [lastAiStats, setLastAiStats]     = useState({ nodesEvaluated: 0, timeTakenMs: 0 });
+  const [treeData, setTreeData]           = useState(null);
+  const [lastMoveIndex, setLastMoveIndex] = useState(null);
+
+  useEffect(() => {
+    if (phase === "playing") {
+      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, 2));
+    }
+  }, [board, currentPlayer, nextValues, phase, totalCircles]);
 
   // Note: we don't need selectedNumber anymore if we enforce sequential play.
   // The player MUST play their nextValues[currentPlayer]. So it's auto-selected.
@@ -89,6 +97,7 @@ export default function Game() {
     const newBoard = [...board];
     newBoard[index] = { player: currentPlayer, value: currentChip };
     setBoard(newBoard);
+    setLastMoveIndex(index);
 
     const nullCount = newBoard.filter((c) => c === null).length;
 
@@ -132,6 +141,7 @@ export default function Game() {
       const newBoard = [...currentBoard];
       newBoard[aiIndex] = { player: aiPlayer, value: aiValue };
       setBoard(newBoard);
+      setLastMoveIndex(aiIndex);
 
       const nullCount = newBoard.filter((c) => c === null).length;
 
@@ -206,6 +216,8 @@ export default function Game() {
           gameResult={gameResult}
           selectedAlgo={selectedAlgo}
           lastAiStats={lastAiStats}
+          treeData={treeData}
+          chosenIndex={lastMoveIndex}
         />
       )}
 
