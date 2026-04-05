@@ -208,3 +208,76 @@
 .player-theme-1 .chip.selected { background: var(--color-p1); border-color: var(--color-p1); color: black; }
 .player-theme-2 .chip.selected { background: var(--color-p2); border-color: var(--color-p2); color: black; }
 .player-theme-3 .chip.selected { background: var(--color-p3); border-color: var(--color-p3); color: black; }
+
+/* --- BOARD LAYOUT WITH SIDEBAR --- */
+.board-layout-wrapper {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.board-main-area {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tree-sidebar {
+  width: 300px;
+  border-left: 1px solid var(--border-color);
+  background: var(--bg-color);
+  overflow-y: hidden;
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-sidebar.closed {
+  width: 0;
+  border-left: none;
+}
+
+@media (max-width: 768px) {
+  .board-layout-wrapper {
+    flex-direction: column;
+  }
+  .tree-sidebar {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    transition: height 0.3s ease;
+  }
+  .tree-sidebar.closed {
+    height: 0;
+    border-top: none;
+    width: 100%;
+  }
+}
+
+.tree-toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Compact mode for AI vs AI */
+.board-cell.board-cell--compact {
+  width: 7vmin;
+  height: 7vmin;
+  max-width: 40px;
+  max-height: 40px;
+  min-width: 25px;
+  min-height: 25px;
+  font-size: 1rem;
+}

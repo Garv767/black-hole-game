@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { calculateScores, getAIMove, getMinimaxMove, getAlphaBetaMove } from "./utils";
 import Board from "./Board";
+import StatsPanel from "./StatsPanel";
 
 export default function AIvsAI() {
   const navigate = useNavigate();
@@ -166,15 +167,15 @@ export default function AIvsAI() {
                 gameResult={results[algo]}
                 selectedAlgo={algo}
                 lastAiStats={stats[algo]}
+                compact={true}
               />
             </div>
-            <div id={`stats-${algo}`} style={{ padding: "0.5rem", minHeight: "80px", borderTop: "1px solid var(--border-color)" }}>
-              <div style={{ fontSize: "0.8rem", fontFamily: "monospace", color: "var(--text-secondary)" }}>
-                <div>Nodes: {stats[algo].nodesEvaluated}</div>
-                <div>Time: {stats[algo].timeTakenMs}ms</div>
-                <div>Moves: {stats[algo].movesPlayed}</div>
-              </div>
-            </div>
+            <StatsPanel 
+              algo={algo} 
+              nodesEvaluated={stats[algo].nodesEvaluated}
+              timeTakenMs={stats[algo].timeTakenMs}
+              movesPlayed={stats[algo].movesPlayed}
+            />
           </div>
         ))}
       </div>
