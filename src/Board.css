@@ -76,6 +76,18 @@
   transition: border-color 0.3s ease;
 }
 
+.circle-index-label {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  opacity: 0.9;
+  pointer-events: none;
+  font-weight: normal;
+}
+
+
 .board-cell.empty {
   border-style: dashed;
   opacity: 0.6;
@@ -231,7 +243,7 @@
   max-width: 800px;
   border-left: 1px solid var(--border-color);
   background: var(--bg-color);
-  overflow-y: hidden;
+  overflow: hidden;
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;

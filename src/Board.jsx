@@ -89,8 +89,10 @@ export default function Board({
                     onClick={() => !isGameOver && onCircleClick(circleIndex)}
                   >
                     {cell?.value}
+                    <span className="circle-index-label">{circleIndex}</span>
                   </div>
                 );
+
               })}
             </div>
           ))}

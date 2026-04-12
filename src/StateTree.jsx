@@ -3,7 +3,16 @@ import React, { useMemo, useState } from 'react';
 export default function StateTree({ tree, chosenIndex, playerColors }) {
   const [scale, setScale] = useState(1);
   const svgWidth = 800;
-  const svgHeight = 400;
+  
+  const treeDepth = useMemo(() => {
+    const getDepth = (node) => {
+      if (!node || !node.children || node.children.length === 0) return 1;
+      return 1 + Math.max(...node.children.map(getDepth));
+    };
+    return getDepth(tree);
+  }, [tree]);
+
+  const svgHeight = Math.max(400, treeDepth * 120);
 
   const renderNode = (node, x, y, dx, level, isChosenPath, isOptimalBranch = false) => {
     if (!node) return null;
@@ -84,14 +93,21 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
   if (!tree) return null;
 
   return (
-    <div className="state-tree-container" style={{ position: 'relative', width: '100%', minHeight: '200px', flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', borderLeft: '1px solid var(--border-color)', overflow: 'auto' }}>
+    <div className="state-tree-container" style={{ position: 'relative', width: '100%', flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', overflow: 'auto' }}>
       <div style={{ position: 'sticky', top: '10px', left: '10px', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
         <button onClick={() => setScale(s => Math.max(0.2, s - 0.2))} style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}>- ZOOM</button>
         <button onClick={() => setScale(s => Math.min(3.0, s + 0.2))} style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}>+ ZOOM</button>
       </div>
-      <svg width={svgWidth * scale} height={svgHeight * scale} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ transformOrigin: 'top left', minWidth: '100%' }}>
-        {renderedTree}
-      </svg>
+      <div style={{ width: svgWidth * scale, height: svgHeight * scale, minWidth: '100%' }}>
+        <svg 
+          width={svgWidth * scale} 
+          height={svgHeight * scale} 
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
+          style={{ transformOrigin: 'top left', display: 'block' }}
+        >
+          {renderedTree}
+        </svg>
+      </div>
     </div>
   );
 }
