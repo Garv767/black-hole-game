@@ -28,6 +28,7 @@ export default function Game() {
   const [selectedAlgo, setSelectedAlgo]   = useState(initialAlgo);
   // Last AI move stats — Suvarna's StatsPanel reads this
   const [lastAiStats, setLastAiStats]     = useState({ nodesEvaluated: 0, timeTakenMs: 0 });
+  const [lastAiAllScores, setLastAiAllScores] = useState(null);
   const [treeData, setTreeData]           = useState(null);
   const [lastMoveIndex, setLastMoveIndex] = useState(null);
 
@@ -35,9 +36,9 @@ export default function Game() {
     if (phase === "playing") {
       const nullCount = board.filter(c => c === null).length;
       const dynDepth = nullCount <= 5 ? 4 : nullCount <= 12 ? 3 : 2;
-      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, dynDepth));
+      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, dynDepth, lastAiAllScores));
     }
-  }, [board, currentPlayer, nextValues, phase, totalCircles]);
+  }, [board, currentPlayer, nextValues, phase, totalCircles, lastAiAllScores]);
 
   // Note: we don't need selectedNumber anymore if we enforce sequential play.
   // The player MUST play their nextValues[currentPlayer]. So it's auto-selected.
@@ -100,6 +101,7 @@ export default function Game() {
     newBoard[index] = { player: currentPlayer, value: currentChip };
     setBoard(newBoard);
     setLastMoveIndex(index);
+    setLastAiAllScores(null); // Reset AI scores for current move
 
     const nullCount = newBoard.filter((c) => c === null).length;
 
@@ -120,30 +122,37 @@ export default function Game() {
   function triggerAIMove(currentBoard, values, aiPlayer) {
     const aiValue = values[aiPlayer];
 
+    // Compute AI Move immediately to show in Decision Tree
+    let aiIndex;
+    let moveStats = { nodesEvaluated: 0, timeTakenMs: 0 };
+    let resultAllScores = null;
+
+    if (selectedAlgo === "minimax") {
+      const result = getMinimaxMove(currentBoard, totalCircles, aiValue);
+      aiIndex = result.index;
+      moveStats = result.stats;
+      resultAllScores = result.allScores;
+    } else if (selectedAlgo === "alphabeta") {
+      const result = getAlphaBetaMove(currentBoard, totalCircles, aiValue);
+      aiIndex = result.index;
+      moveStats = result.stats;
+      resultAllScores = result.allScores;
+    } else {
+      aiIndex = getAIMove(currentBoard, totalCircles, aiValue);
+    }
+
+    setLastAiStats(moveStats);
+    setLastAiAllScores(resultAllScores);
+
+    // Pause so user can see the tree BEFORE the chip is placed
     setTimeout(() => {
-      // Dispatch to the correct algorithm; greedy returns a plain index (no stats)
-      let aiIndex;
-      let moveStats = { nodesEvaluated: 0, timeTakenMs: 0 };
-
-      if (selectedAlgo === "minimax") {
-        const result = getMinimaxMove(currentBoard, totalCircles, aiValue);
-        aiIndex = result.index;
-        moveStats = result.stats;
-      } else if (selectedAlgo === "alphabeta") {
-        const result = getAlphaBetaMove(currentBoard, totalCircles, aiValue);
-        aiIndex = result.index;
-        moveStats = result.stats;
-      } else {
-        aiIndex = getAIMove(currentBoard, totalCircles, aiValue);
-      }
-
-      setLastAiStats(moveStats);
       playPlacementSound(aiPlayer);
 
       const newBoard = [...currentBoard];
       newBoard[aiIndex] = { player: aiPlayer, value: aiValue };
       setBoard(newBoard);
       setLastMoveIndex(aiIndex);
+      setLastAiAllScores(null); // Clear scores for the next turn
 
       const nullCount = newBoard.filter((c) => c === null).length;
 
@@ -155,7 +164,7 @@ export default function Game() {
       }
 
       advanceTurn(aiPlayer, values);
-    }, 500);
+    }, 1500); // Wait 1.5s so user can evaluate the Tree Visualization
   }
 
   function handlePlayAgain() {

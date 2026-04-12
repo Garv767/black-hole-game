@@ -277,12 +277,16 @@ export function getMinimaxMove(board, totalCircles, valueToPlace, depth = 3) {
     const nextP1Val = isAiTurn ? p1Val : p1Val + 1; // p1 advances on their turn
     const nextP2Val = isAiTurn ? p2Val + 1 : p2Val; // p2 advances on their turn
 
-    let best = isAiTurn ? Infinity : Infinity; // both try to minimise AI score
+    let best = isAiTurn ? Infinity : -Infinity; // AI minimises, Human maximises
     for (const idx of emptyIndices) {
       const newBoard = [...curBoard];
       newBoard[idx] = { player, value: val };
       const score = minimax(newBoard, curDepth - 1, !isAiTurn, nextP1Val, nextP2Val);
-      if (score < best) best = score;
+      if (isAiTurn) {
+        if (score < best) best = score;
+      } else {
+        if (score > best) best = score;
+      }
     }
     return best;
   }
@@ -293,11 +297,15 @@ export function getMinimaxMove(board, totalCircles, valueToPlace, depth = 3) {
 
   let bestIndex = emptyIndices[0];
   let bestScore = Infinity;
+  const allScores = {};
 
   for (const idx of emptyIndices) {
     const newBoard = [...board];
     newBoard[idx] = { player: 2, value: p2Next };
     const score = minimax(newBoard, depth - 1, false, p1Next, p2Next + 1);
+    
+    allScores[idx] = score;
+
     if (score < bestScore) {
       bestScore = score;
       bestIndex = idx;
@@ -306,6 +314,7 @@ export function getMinimaxMove(board, totalCircles, valueToPlace, depth = 3) {
 
   return {
     index: bestIndex,
+    allScores,
     stats: {
       nodesEvaluated,
       timeTakenMs: Math.round(performance.now() - startTime),
@@ -358,15 +367,21 @@ export function getAlphaBetaMove(board, totalCircles, valueToPlace, depth = 3) {
     const nextP1Val = isAiTurn ? p1Val : p1Val + 1;
     const nextP2Val = isAiTurn ? p2Val + 1 : p2Val;
 
-    let best = Infinity;
+    let best = isAiTurn ? Infinity : -Infinity;
     for (const idx of emptyIndices) {
       const newBoard = [...curBoard];
       newBoard[idx] = { player, value: val };
       const score = alphaBeta(newBoard, curDepth - 1, !isAiTurn, nextP1Val, nextP2Val, alpha, beta);
-      if (score < best) best = score;
-      // Both sides minimise, so both use alpha as the running best
-      if (score < alpha) alpha = score;
-      if (beta <= alpha) break; // prune
+      
+      if (isAiTurn) {
+        if (score < best) best = score;
+        if (score < beta) beta = score;
+        if (beta <= alpha) break; // prune
+      } else {
+        if (score > best) best = score;
+        if (score > alpha) alpha = score;
+        if (beta <= alpha) break; // prune
+      }
     }
     return best;
   }
@@ -377,19 +392,29 @@ export function getAlphaBetaMove(board, totalCircles, valueToPlace, depth = 3) {
 
   let bestIndex = emptyIndices[0];
   let bestScore = Infinity;
+  const allScores = {};
+  let alpha = -Infinity;
+  let beta = Infinity;
 
   for (const idx of emptyIndices) {
     const newBoard = [...board];
     newBoard[idx] = { player: 2, value: p2Next };
-    const score = alphaBeta(newBoard, depth - 1, false, p1Next, p2Next + 1, Infinity, Infinity);
+    const score = alphaBeta(newBoard, depth - 1, false, p1Next, p2Next + 1, alpha, beta);
+    
+    allScores[idx] = score;
+
     if (score < bestScore) {
       bestScore = score;
       bestIndex = idx;
+    }
+    if (score < beta) {
+      beta = score;
     }
   }
 
   return {
     index: bestIndex,
+    allScores,
     stats: {
       nodesEvaluated,
       timeTakenMs: Math.round(performance.now() - startTime),
@@ -419,15 +444,17 @@ export function getAlphaBetaMove(board, totalCircles, valueToPlace, depth = 3) {
  *   children: TreeNode[]
  * }
  */
-export function buildStateTree(board, totalCircles, nextValues, currentPlayer, depth = 2) {
-  function buildNode(curBoard, curPlayer, curNextValues, moveIndex, chipValue, curDepth) {
-    const estimatedScore = greedyScoreEstimate(curBoard, totalCircles);
+export function buildStateTree(board, totalCircles, nextValues, currentPlayer, depth = 2, topLevelScores = null) {
+  const players = totalCircles === 21 ? [1, 2] : [1, 2, 3];
+
+  function buildNode(curBoard, curNextValues, playerWhoMoved, moveIndex, chipValue, curDepth, presetScore = null) {
+    const estimatedScore = presetScore !== null ? presetScore : greedyScoreEstimate(curBoard, totalCircles);
 
     const node = {
       boardSnapshot: [...curBoard],
       move: moveIndex,        // which index was placed (null = root)
       value: chipValue,       // chip value placed (null = root)
-      player: curPlayer,
+      player: playerWhoMoved, // The player who PERFORMED the move to get here
       estimatedScore,
       children: [],
     };
@@ -437,33 +464,43 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
     const nullCount = curBoard.filter((c) => c === null).length;
     if (nullCount <= 1) return node; // terminal
 
+    // Determine who moves next from this state
+    const nextPlayer = playerWhoMoved === null 
+      ? currentPlayer 
+      : players[(players.indexOf(playerWhoMoved) + 1) % players.length];
+
     const emptyIndices = curBoard
       .map((cell, i) => (cell === null ? i : -1))
       .filter((i) => i !== -1);
 
-    const val = curNextValues[curPlayer];
+    const val = curNextValues[nextPlayer];
+    const updatedValues = { ...curNextValues, [nextPlayer]: val + 1 };
 
-    // Compute next player and their updated values
-    const players = totalCircles === 21 ? [1, 2] : [1, 2, 3];
-    const curIdx = players.indexOf(curPlayer);
-    const nextPlayer = players[(curIdx + 1) % players.length];
-    const updatedValues = { ...curNextValues, [curPlayer]: val + 1 };
-
-    // Build children and prune obviously worse ones (keep top half by estimatedScore)
+    // Build children
     const childNodes = emptyIndices.map((idx) => {
       const newBoard = [...curBoard];
-      newBoard[idx] = { player: curPlayer, value: val };
-      return buildNode(newBoard, nextPlayer, updatedValues, idx, val, curDepth - 1);
+      newBoard[idx] = { player: nextPlayer, value: val };
+
+      // If we are at the source (root), try to use actual search results for children
+      let customScore = null;
+      if (playerWhoMoved === null && topLevelScores && topLevelScores[idx] !== undefined) {
+        customScore = topLevelScores[idx];
+      }
+
+      return buildNode(newBoard, updatedValues, nextPlayer, idx, val, curDepth - 1, customScore);
     });
 
-    // Sort by estimatedScore ascending (lower = better for AI) and cap at ~20 total visible nodes
-    childNodes.sort((a, b) => a.estimatedScore - b.estimatedScore);
+    // Sort by estimatedScore. AI (Player 2) wants lowest score, Human (Player 1) wants highest AI score.
+    childNodes.sort((a, b) => {
+      if (nextPlayer === 1) return b.estimatedScore - a.estimatedScore;
+      return a.estimatedScore - b.estimatedScore;
+    });
     const keepCount = Math.min(childNodes.length, 3);
     node.children = childNodes.slice(0, keepCount);
 
     return node;
   }
 
-  // Root has no move/value since it's the current board state
-  return buildNode(board, currentPlayer, nextValues, null, null, depth);
+  // Root has no move/value and neutral player (passed as null)
+  return buildNode(board, nextValues, null, null, null, depth);
 }
