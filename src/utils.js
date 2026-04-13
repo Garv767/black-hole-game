@@ -444,7 +444,7 @@ export function getAlphaBetaMove(board, totalCircles, valueToPlace, depth = 3) {
  *   children: TreeNode[]
  * }
  */
-export function buildStateTree(board, totalCircles, nextValues, currentPlayer, depth = 2, topLevelScores = null) {
+export function buildStateTree(moveHistory, board, totalCircles, nextValues, currentPlayer, depth = 2, topLevelScores = null) {
   const players = totalCircles === 21 ? [1, 2] : [1, 2, 3];
 
   function buildNode(curBoard, curNextValues, playerWhoMoved, moveIndex, chipValue, curDepth, presetScore = null) {
@@ -452,10 +452,11 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
 
     const node = {
       boardSnapshot: [...curBoard],
-      move: moveIndex,        // which index was placed (null = root)
-      value: chipValue,       // chip value placed (null = root)
-      player: playerWhoMoved, // The player who PERFORMED the move to get here
+      move: moveIndex,        
+      value: chipValue,       
+      player: playerWhoMoved, 
       estimatedScore,
+      isHistory: false, // Predictive branches are NOT history
       children: [],
     };
 
@@ -464,7 +465,6 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
     const nullCount = curBoard.filter((c) => c === null).length;
     if (nullCount <= 1) return node; // terminal
 
-    // Determine who moves next from this state
     const nextPlayer = playerWhoMoved === null 
       ? currentPlayer 
       : players[(players.indexOf(playerWhoMoved) + 1) % players.length];
@@ -476,12 +476,10 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
     const val = curNextValues[nextPlayer];
     const updatedValues = { ...curNextValues, [nextPlayer]: val + 1 };
 
-    // Build children
     const childNodes = emptyIndices.map((idx) => {
       const newBoard = [...curBoard];
       newBoard[idx] = { player: nextPlayer, value: val };
 
-      // If we are at the source (root), try to use actual search results for children
       let customScore = null;
       if (playerWhoMoved === null && topLevelScores && topLevelScores[idx] !== undefined) {
         customScore = topLevelScores[idx];
@@ -501,6 +499,55 @@ export function buildStateTree(board, totalCircles, nextValues, currentPlayer, d
     return node;
   }
 
-  // Root has no move/value and neutral player (passed as null)
-  return buildNode(board, nextValues, null, null, null, depth);
+  // 1. Build the predictive branches starting from the CURRENT real board
+  const predictionRoot = buildNode(board, nextValues, null, null, null, depth);
+
+  // If no history exists, the predictions are the entire tree
+  if (!moveHistory || moveHistory.length === 0) {
+    predictionRoot.isHistory = true;
+    return predictionRoot;
+  }
+
+  // 2. Rebuild the History Trunk
+  let curBoard = Array(totalCircles).fill(null);
+  const rootNode = {
+    boardSnapshot: [...curBoard],
+    move: null,
+    value: null,
+    player: null,
+    estimatedScore: greedyScoreEstimate(curBoard, totalCircles),
+    isHistory: true,
+    children: [],
+  };
+
+  let currentTrunkNode = rootNode;
+
+  for (let i = 0; i < moveHistory.length; i++) {
+    const move = moveHistory[i];
+    curBoard[move.index] = { player: move.player, value: move.value };
+    
+    // Once we reach the very last move in history, it perfectly describes the state of predictionRoot
+    if (i === moveHistory.length - 1) {
+      predictionRoot.move = move.index;
+      predictionRoot.value = move.value;
+      predictionRoot.player = move.player;
+      predictionRoot.isHistory = true; // The root of the predictions IS a completed historical move
+      currentTrunkNode.children.push(predictionRoot);
+      break;
+    } else {
+      const nextNode = {
+        boardSnapshot: [...curBoard],
+        move: move.index,
+        value: move.value,
+        player: move.player,
+        estimatedScore: greedyScoreEstimate(curBoard, totalCircles),
+        isHistory: true,
+        children: [],
+      };
+      currentTrunkNode.children.push(nextNode);
+      currentTrunkNode = nextNode;
+    }
+  }
+
+  return rootNode;
 }

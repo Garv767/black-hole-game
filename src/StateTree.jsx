@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 
 export default function StateTree({ tree, chosenIndex, playerColors }) {
   const [scale, setScale] = useState(1);
@@ -13,6 +13,23 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
   }, [tree]);
 
   const svgHeight = Math.max(400, treeDepth * 120);
+
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    // Add a slight delay to allow React to paint the new SVG height before scrolling
+    const scrollTimeout = setTimeout(() => {
+      if (containerRef.current) {
+        const hCenter = (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2;
+        containerRef.current.scrollTo({
+          top: containerRef.current.scrollHeight,
+          left: hCenter,
+          behavior: 'smooth'
+        });
+      }
+    }, 50);
+    return () => clearTimeout(scrollTimeout);
+  }, [tree, scale]);
 
   const renderNode = (node, x, y, dx, level, isChosenPath, isOptimalBranch = false) => {
     if (!node) return null;
@@ -30,9 +47,12 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
 
       node.children.forEach((child, i) => {
         const childX = startX + i * childSpacing;
-        const isChildChosen = isChosenPath && child.move === chosenIndex;
-        const childIsOptimal = isRoot && i === 0;
-        const lineOpacity = isChosenPath ? (isChildChosen ? 1 : childIsOptimal ? 0.8 : 0.4) : 0.4;
+        const childIsHistory = child.isHistory;
+        const isChildChosen = childIsHistory || (isChosenPath && child.move === chosenIndex);
+        const isRootOfPredictions = node.isHistory && !childIsHistory;
+        const childIsOptimal = isRootOfPredictions && i === 0;
+        
+        const lineOpacity = isChildChosen ? 1 : childIsOptimal ? 0.8 : 0.4;
         const strokeColor = isChildChosen ? 'white' : childIsOptimal ? 'var(--color-p2)' : 'var(--text-secondary)';
         
         childrenNodes.push(
@@ -45,8 +65,10 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
             opacity={lineOpacity}
           />
         );
+        // Do not shrink dx if this was just a straight line in the history trunk
+        const nextDx = childCount === 1 ? dx : childSpacing * 0.9;
         childrenNodes.push(
-          renderNode(child, childX, childY, childSpacing * 0.9, level + 1, isChildChosen, childIsOptimal)
+          renderNode(child, childX, childY, nextDx, level + 1, isChildChosen, childIsOptimal)
         );
       });
     }
@@ -58,6 +80,8 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
         {childrenNodes}
         {isRoot ? (
           <polygon points={`${x},${y-radius} ${x-radius},${y+radius} ${x+radius},${y+radius}`} fill={color} opacity={nodeOpacity} />
+        ) : node.isHistory ? (
+          <rect x={x-radius} y={y-radius} width={radius*2} height={radius*2} fill={color} opacity={nodeOpacity} />
         ) : (
           <circle cx={x} cy={y} r={radius} fill={color} opacity={nodeOpacity} />
         )}
@@ -93,7 +117,7 @@ export default function StateTree({ tree, chosenIndex, playerColors }) {
   if (!tree) return null;
 
   return (
-    <div className="state-tree-container" style={{ position: 'relative', width: '100%', flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', overflow: 'auto' }}>
+    <div ref={containerRef} className="state-tree-container" style={{ position: 'relative', width: '100%', flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', overflow: 'auto' }}>
       <div style={{ position: 'sticky', top: '10px', left: '10px', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
         <button onClick={() => setScale(s => Math.max(0.2, s - 0.2))} style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}>- ZOOM</button>
         <button onClick={() => setScale(s => Math.min(3.0, s + 0.2))} style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}>+ ZOOM</button>

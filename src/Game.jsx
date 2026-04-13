@@ -26,6 +26,7 @@ export default function Game() {
   const [gameResult, setGameResult]       = useState(null);
   // 'greedy' | 'minimax' | 'alphabeta' — exported via prop/context for Ketki's UI & Suvarna's stats
   const [selectedAlgo, setSelectedAlgo]   = useState(initialAlgo);
+  const [moveHistory, setMoveHistory]     = useState([]);
   // Last AI move stats — Suvarna's StatsPanel reads this
   const [lastAiStats, setLastAiStats]     = useState({ nodesEvaluated: 0, timeTakenMs: 0 });
   const [lastAiAllScores, setLastAiAllScores] = useState(null);
@@ -36,9 +37,9 @@ export default function Game() {
     if (phase === "playing") {
       const nullCount = board.filter(c => c === null).length;
       const dynDepth = nullCount <= 5 ? 4 : nullCount <= 12 ? 3 : 2;
-      setTreeData(buildStateTree(board, totalCircles, nextValues, currentPlayer, dynDepth, lastAiAllScores));
+      setTreeData(buildStateTree(moveHistory, board, totalCircles, nextValues, currentPlayer, dynDepth, lastAiAllScores));
     }
-  }, [board, currentPlayer, nextValues, phase, totalCircles, lastAiAllScores]);
+  }, [board, currentPlayer, nextValues, phase, totalCircles, lastAiAllScores, moveHistory]);
 
   // Note: we don't need selectedNumber anymore if we enforce sequential play.
   // The player MUST play their nextValues[currentPlayer]. So it's auto-selected.
@@ -101,6 +102,7 @@ export default function Game() {
     newBoard[index] = { player: currentPlayer, value: currentChip };
     setBoard(newBoard);
     setLastMoveIndex(index);
+    setMoveHistory(prev => [...prev, { player: currentPlayer, index, value: currentChip }]);
     setLastAiAllScores(null); // Reset AI scores for current move
 
     const nullCount = newBoard.filter((c) => c === null).length;
@@ -122,27 +124,39 @@ export default function Game() {
   function triggerAIMove(currentBoard, values, aiPlayer) {
     const aiValue = values[aiPlayer];
 
-    // Compute AI Move immediately to show in Decision Tree
-    let aiIndex;
+    // Compute AI Move scores to show in Decision Tree
     let moveStats = { nodesEvaluated: 0, timeTakenMs: 0 };
     let resultAllScores = null;
 
     if (selectedAlgo === "minimax") {
       const result = getMinimaxMove(currentBoard, totalCircles, aiValue);
-      aiIndex = result.index;
       moveStats = result.stats;
       resultAllScores = result.allScores;
     } else if (selectedAlgo === "alphabeta") {
       const result = getAlphaBetaMove(currentBoard, totalCircles, aiValue);
-      aiIndex = result.index;
       moveStats = result.stats;
       resultAllScores = result.allScores;
-    } else {
-      aiIndex = getAIMove(currentBoard, totalCircles, aiValue);
     }
 
     setLastAiStats(moveStats);
     setLastAiAllScores(resultAllScores);
+
+    // Build the visual tree in memory to FORCE the AI to pick the visual "✨ BEST" node (100% synchronization guarantee)
+    const nullCount = currentBoard.filter(c => c === null).length;
+    const dynDepth = nullCount <= 5 ? 4 : nullCount <= 12 ? 3 : 2;
+    const aiTree = buildStateTree(moveHistory, currentBoard, totalCircles, values, aiPlayer, dynDepth, resultAllScores);
+
+    // Traverse the historical trunk to reach the current branching node
+    let branchingNode = aiTree;
+    while (branchingNode && branchingNode.children && branchingNode.children.length > 0) {
+      if (!branchingNode.children[0].isHistory) {
+        break; // Children are the predictive branches
+      }
+      branchingNode = branchingNode.children[0];
+    }
+    
+    // Explicitly grab the move from the top-rated visual node
+    const aiIndex = branchingNode.children[0].move;
 
     // Pause so user can see the tree BEFORE the chip is placed
     setTimeout(() => {
@@ -152,6 +166,7 @@ export default function Game() {
       newBoard[aiIndex] = { player: aiPlayer, value: aiValue };
       setBoard(newBoard);
       setLastMoveIndex(aiIndex);
+      setMoveHistory(prev => [...prev, { player: aiPlayer, index: aiIndex, value: aiValue }]);
       setLastAiAllScores(null); // Clear scores for the next turn
 
       const nullCount = newBoard.filter((c) => c === null).length;
@@ -173,6 +188,11 @@ export default function Game() {
     setNextValues({ 1: 1, 2: 1, 3: 1 });
     setGameResult(null);
     setPhase("playing");
+    setLastMoveIndex(null);
+    setTreeData(null);
+    setLastAiStats({ nodesEvaluated: 0, timeTakenMs: 0 });
+    setLastAiAllScores(null);
+    setMoveHistory([]);
   }
 
   // Redirect invalid URLs
